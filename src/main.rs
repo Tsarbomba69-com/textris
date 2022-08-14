@@ -26,7 +26,7 @@ const TETROMINO: &'static [&'static str] = &[
     "..X...X..XX.....",
 ];
 
-fn rotate(px: i32, py: i32, r: usize) -> usize {
+fn rotate(px: i16, py: i16, r: usize) -> usize {
     match r % 4 {
         0 => (py * 4 + px) as usize,
         1 => (12 + py - px * 4) as usize,
@@ -36,17 +36,17 @@ fn rotate(px: i32, py: i32, r: usize) -> usize {
     }
 }
 
-fn can_move(piece: u8, orientation: usize, pos_x: i32, pos_y: i32, player_field: &[usize]) -> bool {
-    for px in 0..4 as i32 {
-        for py in 0..4 as i32 {
+fn can_move(piece: u8, orientation: usize, pos_x: i16, pos_y: i16, player_field: &[usize]) -> bool {
+    for px in 0..4 as i16 {
+        for py in 0..4 as i16 {
             // Get index into piece
             let player_idx = rotate(px, py, orientation);
 
             // Get index into field
-            let field_idx = (pos_y + py) * FIELD_WIDTH as i32 + pos_x + px;
+            let field_idx = (pos_y + py) * FIELD_WIDTH as i16 + pos_x + px;
 
-            if pos_x + px >= 0 && pos_x + px < FIELD_WIDTH as i32 {
-                if pos_y + py >= 0 && pos_y + py < FIELD_HEIGTH as i32 {
+            if pos_x + px >= 0 && pos_x + px < FIELD_WIDTH as i16 {
+                if pos_y + py >= 0 && pos_y + py < FIELD_HEIGTH as i16 {
                     // In Bounds so do collision check
                     if TETROMINO[piece as usize].chars().nth(player_idx).unwrap() != '.'
                         && player_field[field_idx as usize] != 0
@@ -103,8 +103,8 @@ fn main() {
         }
     }
 
-    let mut pos_x: i32 = FIELD_WIDTH as i32 / 2;
-    let mut pos_y: i32 = 0;
+    let mut pos_x: i16 = FIELD_WIDTH as i16 / 2;
+    let mut pos_y: i16 = 0;
     let mut orientation = 0;
     let mut piece: u8 = rand::thread_rng().gen_range(0..7);
     // let mut piece: u8 = 2; // For debugging
@@ -124,22 +124,22 @@ fn main() {
         let mut screen: Vec<char> = vec![' '; SCREEN_WIDTH * SCREEN_HEIGTH];
 
         // Game Logic =====================
-        if poll(Duration::from_millis(10)).unwrap() {
+        if poll(Duration::from_millis(1000)).unwrap() {
             // It's guaranteed that the `read()` won't block when the `poll()`
             // function returns `true`
             match read().unwrap() {
                 Event::Key(event) => match event.code {
                     KeyCode::Char('d') => {
                         pos_x +=
-                            can_move(piece, orientation, pos_x + 1, pos_y, &player_field) as i32
+                            can_move(piece, orientation, pos_x + 1, pos_y, &player_field) as i16
                     }
                     KeyCode::Char('a') => {
                         pos_x -=
-                            can_move(piece, orientation, pos_x - 1, pos_y, &player_field) as i32
+                            can_move(piece, orientation, pos_x - 1, pos_y, &player_field) as i16
                     }
                     KeyCode::Char('s') => {
                         pos_y +=
-                            can_move(piece, orientation, pos_x, pos_y + 1, &player_field) as i32
+                            can_move(piece, orientation, pos_x, pos_y + 1, &player_field) as i16
                     }
                     KeyCode::Char('r') => {
                         orientation +=
@@ -193,7 +193,7 @@ fn main() {
                     }
                 }
 
-                pos_x = FIELD_WIDTH as i32 / 2;
+                pos_x = FIELD_WIDTH as i16 / 2;
                 pos_y = 0;
                 orientation = 0;
                 piece = rand::thread_rng().gen_range(0..7);
