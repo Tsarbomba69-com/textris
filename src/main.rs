@@ -74,10 +74,12 @@ fn render_line(lines: &mut Vec<usize>, buffer: &String, player_field: &mut [usiz
     std::thread::sleep(Duration::from_millis(60)); // Delay a bit
 
     for l in lines {
-        for px in 0..FIELD_WIDTH - 1 {
-            for py in *l as i32..0 {
+        for px in 1..FIELD_WIDTH - 1 {
+            let mut py = *l;
+            while py > 0 {
                 player_field[py as usize * FIELD_WIDTH + px] =
                     player_field[(py as usize - 1) * FIELD_WIDTH + px];
+                py -= 1;
             }
             player_field[px] = 0;
         }
@@ -104,8 +106,8 @@ fn main() {
     let mut pos_x: i32 = FIELD_WIDTH as i32 / 2;
     let mut pos_y: i32 = 0;
     let mut orientation = 0;
-    let mut piece: u8 = rand::thread_rng().gen_range(0..7);
-    // let mut piece: u8 = 2; // For debugging
+    // let mut piece: u8 = rand::thread_rng().gen_range(0..7);
+    let mut piece: u8 = 2; // For debugging
     let mut is_falling: bool = false;
     let mut game_over = false;
     let speed = 20;
@@ -183,7 +185,7 @@ fn main() {
 
                         if line {
                             // Remove Line, set to =
-                            for px in 0..FIELD_WIDTH - 1 {
+                            for px in 1..FIELD_WIDTH - 1 {
                                 player_field[(pos_y as usize + py) * FIELD_WIDTH + px] = 8;
                             }
                             lines.push(pos_y as usize + py);
@@ -194,8 +196,8 @@ fn main() {
                 pos_x = FIELD_WIDTH as i32 / 2;
                 pos_y = 0;
                 orientation = 0;
-                piece = rand::thread_rng().gen_range(0..7);
-                // piece = 2; // For debbuging
+                // piece = rand::thread_rng().gen_range(0..7);
+                piece = 2; // For debbuging
             }
         }
 
