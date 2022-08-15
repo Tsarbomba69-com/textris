@@ -7,9 +7,10 @@ use crossterm::{
     event::{poll, read, Event, KeyCode},
     execute,
     style::{Color, Print, SetBackgroundColor, SetForegroundColor},
-    terminal::SetSize,
+    terminal::{Clear, ClearType, SetSize},
 };
 use rand::Rng;
+use std::os::raw::c_uchar;
 
 const SCREEN_WIDTH: usize = 80;
 const SCREEN_HEIGTH: usize = 30;
@@ -68,6 +69,7 @@ fn render_line(lines: &mut Vec<usize>, buffer: &String, player_field: &mut [usiz
         SetForegroundColor(Color::White),
         SetBackgroundColor(Color::DarkBlue),
         Print(buffer),
+        Clear(ClearType::All),
         SetSize(SCREEN_WIDTH as u16, SCREEN_HEIGTH as u16)
     )
     .unwrap();
@@ -85,11 +87,13 @@ fn render_line(lines: &mut Vec<usize>, buffer: &String, player_field: &mut [usiz
         }
     }
 
-    print!("{esc}c", esc = 27 as char); //Clear terminal windows
+    // print!("{esc}c", esc = 27 as char); //Clear terminal windows
 }
 
 fn main() {
     let mut player_field: Vec<usize> = vec![0usize; FIELD_WIDTH * FIELD_HEIGTH]; // Create play field buffer
+                                                                                 // Create Screen Buffer
+    let screen: &mut Vec<char> = &mut vec![' '; SCREEN_WIDTH * SCREEN_HEIGTH];
 
     for x in 0..FIELD_WIDTH {
         // Board Boundary
@@ -113,52 +117,48 @@ fn main() {
     let speed = 20;
     let mut speed_count = 0;
     let mut lines: Vec<usize> = Vec::new();
+    let mut keys = [false; 4];
+    let mut hold_rotation = true;
 
     while !game_over {
         // Timing =======================
-        std::thread::sleep(Duration::from_millis(10)); // Small Step = 1 Game Tick
+        std::thread::sleep(Duration::from_millis(30)); // Small Step = 1 Game Tick
         speed_count += 1;
         is_falling = speed_count == speed;
 
-        // Create Screen Buffer
-        let mut screen: Vec<char> = vec![' '; SCREEN_WIDTH * SCREEN_HEIGTH];
-
         // Game Logic =====================
-        if poll(Duration::from_millis(1000)).unwrap() {
-            // It's guaranteed that the `read()` won't block when the `poll()`
-            // function returns `true`
-            match read().unwrap() {
-                Event::Key(event) => match event.code {
-                    KeyCode::Char('d') => {
-                        pos_x +=
-                            can_move(piece, orientation, pos_x + 1, pos_y, &player_field) as i16
-                    }
-                    KeyCode::Char('a') => {
-                        pos_x -=
-                            can_move(piece, orientation, pos_x - 1, pos_y, &player_field) as i16
-                    }
-                    KeyCode::Char('s') => {
-                        pos_y +=
-                            can_move(piece, orientation, pos_x, pos_y + 1, &player_field) as i16
-                    }
-                    KeyCode::Char('r') => {
-                        orientation +=
-                            can_move(piece, orientation + 1, pos_x, pos_y, &player_field) as usize
-                    }
-                    _ => (),
-                },
-                Event::Mouse(_event) => (),
-                Event::Resize(_width, _height) => (),
+        unsafe {
+            for k in 0..4 {
+                keys[k] = (0x8000 as u16
+                    & winapi::um::winuser::GetAsyncKeyState(
+                        "DASR".chars().nth(k).unwrap() as i32
+                    ) as u16)
+                    != 0;
             }
+
+            // Handle player movement
+            pos_x +=
+                (keys[0] && can_move(piece, orientation, pos_x + 1, pos_y, &player_field)) as i16;
+            pos_x -=
+                (keys[1] && can_move(piece, orientation, pos_x - 1, pos_y, &player_field)) as i16;
+            pos_y +=
+                (keys[2] && can_move(piece, orientation, pos_x, pos_y + 1, &player_field)) as i16;
+        }
+
+        // Rotate, but latch to stop wild spinning
+        if (keys[3]) {
+            orientation += (hold_rotation
+                && can_move(piece, orientation + 1, pos_x, pos_y, &player_field)) as usize;
+            hold_rotation = false;
         } else {
-            // Timeout expired and no `Event` is available
+            hold_rotation = true;
         }
         // Force the piece down the playfield if it's time
         if is_falling {
             speed_count = 0;
             if can_move(piece, orientation, pos_x, pos_y + 1, &player_field[..]) {
                 pos_y += 1;
-                print!("{esc}c", esc = 27 as char); //Clear terminal windows
+                execute!(stdout(), Clear(ClearType::All)).unwrap(); //Clear terminal windows
             } else {
                 for px in 0..4 {
                     for py in 0..4 {
@@ -228,7 +228,7 @@ fn main() {
             }
         }
 
-        let buffer: String = screen.into_iter().collect();
+        let buffer: String = screen.iter().collect();
 
         // Animate Line Completion
         if !lines.is_empty() {
@@ -240,7 +240,7 @@ fn main() {
             SetForegroundColor(Color::White),
             SetBackgroundColor(Color::DarkBlue),
             Print(buffer.clone()),
-            SetSize(SCREEN_WIDTH as u16, SCREEN_HEIGTH as u16)
+            SetSize(SCREEN_WIDTH as u16, SCREEN_HEIGTH as u16),
         )
         .unwrap();
 
