@@ -1,16 +1,14 @@
 use std::{
-    io::{stdout, Write},
+    io::{stdin, stdout, Write},
     time::Duration,
 };
 
 use crossterm::{
-    event::{poll, read, Event, KeyCode},
     execute,
     style::{Color, Print, SetBackgroundColor, SetForegroundColor},
     terminal::{Clear, ClearType, SetSize},
 };
 use rand::Rng;
-use std::os::raw::c_uchar;
 
 const SCREEN_WIDTH: usize = 80;
 const SCREEN_HEIGTH: usize = 30;
@@ -119,6 +117,7 @@ fn main() {
     let mut lines: Vec<usize> = Vec::new();
     let mut keys = [false; 4];
     let mut hold_rotation = true;
+    let mut score: u64 = 0;
 
     while !game_over {
         // Timing =======================
@@ -130,9 +129,8 @@ fn main() {
         unsafe {
             for k in 0..4 {
                 keys[k] = (0x8000 as u16
-                    & winapi::um::winuser::GetAsyncKeyState(
-                        "DASR".chars().nth(k).unwrap() as i32
-                    ) as u16)
+                    & winapi::um::winuser::GetAsyncKeyState("DASR".chars().nth(k).unwrap() as i32)
+                        as u16)
                     != 0;
             }
 
@@ -146,9 +144,10 @@ fn main() {
         }
 
         // Rotate, but latch to stop wild spinning
-        if (keys[3]) {
+        if keys[3] {
             orientation += (hold_rotation
-                && can_move(piece, orientation + 1, pos_x, pos_y, &player_field)) as usize;
+                && can_move(piece, orientation + 1, pos_x, pos_y, &player_field))
+                as usize;
             hold_rotation = false;
         } else {
             hold_rotation = true;
@@ -193,6 +192,10 @@ fn main() {
                     }
                 }
 
+                score += 25;
+                if !lines.is_empty() {
+                    score += (1 << lines.len()) * 100;
+                }
                 pos_x = FIELD_WIDTH as i16 / 2;
                 pos_y = 0;
                 orientation = 0;
@@ -228,6 +231,11 @@ fn main() {
             }
         }
 
+        // Draw Score
+        for (i, char) in format!("Pontuação: {}", score).chars().enumerate() {
+            screen[(2 * SCREEN_WIDTH) as usize + SCREEN_WIDTH as usize + 16 + i] = char;
+        }
+
         let buffer: String = screen.iter().collect();
 
         // Animate Line Completion
@@ -247,4 +255,14 @@ fn main() {
         // Lose state
         game_over = !can_move(piece, orientation, pos_x, pos_y, &player_field);
     }
+    print!("{esc}c", esc = 27 as char);
+    execute!(
+        stdout(),
+        SetForegroundColor(Color::White),
+        SetBackgroundColor(Color::Red),
+        Print(format!("PERDEU!\n Sua pontuação: {}\n\n", score)),
+        SetSize(SCREEN_WIDTH as u16, SCREEN_HEIGTH as u16),
+    )
+    .unwrap();
+    let _ = stdin().read_line(&mut String::from("")).unwrap();
 }
