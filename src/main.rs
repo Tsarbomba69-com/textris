@@ -112,12 +112,13 @@ fn main() {
     // let mut piece: u8 = 2; // For debugging
     let mut is_falling: bool = false;
     let mut game_over = false;
-    let speed = 20;
+    let mut speed = 20;
     let mut speed_count = 0;
     let mut lines: Vec<usize> = Vec::new();
     let mut keys = [false; 4];
     let mut hold_rotation = true;
     let mut score: u64 = 0;
+    let mut piece_count = 0;
 
     while !game_over {
         // Timing =======================
@@ -155,6 +156,10 @@ fn main() {
         // Force the piece down the playfield if it's time
         if is_falling {
             speed_count = 0;
+            piece_count += 1;
+            if piece_count % 50 == 0 && speed >= 10 {
+                speed -= 1;
+            }
             if can_move(piece, orientation, pos_x, pos_y + 1, &player_field[..]) {
                 pos_y += 1;
                 execute!(stdout(), Clear(ClearType::All)).unwrap(); //Clear terminal windows
