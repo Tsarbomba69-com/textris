@@ -110,7 +110,6 @@ fn main() {
     let mut orientation = 0;
     let mut piece: u8 = rand::thread_rng().gen_range(0..7);
     // let mut piece: u8 = 2; // For debugging
-    let mut is_falling: bool = false;
     let mut game_over = false;
     let mut speed = 20;
     let mut speed_count = 0;
@@ -124,7 +123,7 @@ fn main() {
         // Timing =======================
         std::thread::sleep(Duration::from_millis(30)); // Small Step = 1 Game Tick
         speed_count += 1;
-        is_falling = speed_count == speed;
+        let is_falling = speed_count == speed;
 
         // Game Logic =====================
         unsafe {
@@ -134,15 +133,12 @@ fn main() {
                         as u16)
                     != 0;
             }
-
-            // Handle player movement
-            pos_x +=
-                (keys[0] && can_move(piece, orientation, pos_x + 1, pos_y, &player_field)) as i16;
-            pos_x -=
-                (keys[1] && can_move(piece, orientation, pos_x - 1, pos_y, &player_field)) as i16;
-            pos_y +=
-                (keys[2] && can_move(piece, orientation, pos_x, pos_y + 1, &player_field)) as i16;
         }
+
+        // Handle player movement
+        pos_x += (keys[0] && can_move(piece, orientation, pos_x + 1, pos_y, &player_field)) as i16;
+        pos_x -= (keys[1] && can_move(piece, orientation, pos_x - 1, pos_y, &player_field)) as i16;
+        pos_y += (keys[2] && can_move(piece, orientation, pos_x, pos_y + 1, &player_field)) as i16;
 
         // Rotate, but latch to stop wild spinning
         if keys[3] {
